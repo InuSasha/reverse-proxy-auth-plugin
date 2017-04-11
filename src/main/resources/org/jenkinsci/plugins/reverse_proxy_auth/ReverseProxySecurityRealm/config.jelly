@@ -32,6 +32,9 @@ THE SOFTWARE.
   <f:entry title="${%Header Groups Delimiter Name}">
     <f:textbox field="headerGroupsDelimiter" default="|" />
   </f:entry>
+  <f:entry title="${%Allowed Proxy Addresses}">
+    <f:textbox field="allowedProxyAddresses" default="127.0.0.1" />
+  </f:entry>
   <f:advanced>  
 	<f:entry title="${%Server}" >
 	  <f:textbox name="server" value="${instance.server}"

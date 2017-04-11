@@ -252,14 +252,19 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 	 */
 	public final String headerGroupsDelimiter;
 
-    public final boolean disableLdapEmailResolver;
+	/**
+	 * Adresses of allowed hosts for auth
+	 */
+	public final List<String> allowedProxyAddresses;
+
+	public final boolean disableLdapEmailResolver;
 
     private final String displayNameLdapAttribute;
 
     private final String emailAddressLdapAttribute;
 
 	@DataBoundConstructor
-	public ReverseProxySecurityRealm(String forwardedUser, String headerGroups, String headerGroupsDelimiter, String server, String rootDN, boolean inhibitInferRootDN,
+	public ReverseProxySecurityRealm(String forwardedUser, String headerGroups, String headerGroupsDelimiter, String allowedProxyAddresses, String server, String rootDN, boolean inhibitInferRootDN,
 			String userSearchBase, String userSearch, String groupSearchBase, String groupSearchFilter, String groupMembershipFilter, String managerDN, String managerPassword, Integer updateInterval, boolean disableLdapEmailResolver, String displayNameLdapAttribute, String emailAddressLdapAttribute) {
 
 		this.forwardedUser = fixEmptyAndTrim(forwardedUser);
@@ -270,7 +275,10 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 		} else {
 			this.headerGroupsDelimiter = "|";
 		}
-		//
+		
+		this.allowedProxyAddresses = new ArrayList<String>();
+		this.allowedProxyAddresses.add(allowedProxyAddresses);
+		
 		this.server = fixEmptyAndTrim(server);
 		this.managerDN = fixEmpty(managerDN);
 		this.managerPassword = Scrambler.scramble(fixEmpty(managerPassword));
@@ -347,6 +355,15 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 		return emailAddressLdapAttribute;
 	}
 	
+	private String getProxyHeader(HttpServletRequest r, String headerName) {
+		String remoteAddr = r.getRemoteAddr();
+		if(!allowedProxyAddresses.contains(remoteAddr)) {
+			LOGGER.warning("Get auth header from forbidden host (" + remoteAddr + "). Ignore them");
+			return null;
+		}
+		LOGGER.info("Get auth header from allowed host: " + remoteAddr);
+		return r.getHeader(headerName);
+	}
 	/**
 	 * Infer the root DN.
 	 *
@@ -443,7 +460,7 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 
 				Authentication auth = Hudson.ANONYMOUS;
 				if ((forwardedUser != null
-					 && (userFromHeader = r.getHeader(forwardedUser)) != null)
+					 && (userFromHeader = getProxyHeader(r, forwardedUser)) != null)
 					 || userFromApiToken != null) {
 					//LOGGER.log(Level.INFO, "USER LOGGED IN: {0}", userFromHeader);
 				        if (userFromHeader == null && userFromApiToken != null) {
@@ -474,7 +491,7 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 						}
 
 					} else {
-						String groups = r.getHeader(headerGroups);
+						String groups = getProxyHeader(r, headerGroups);
 
 						List<GrantedAuthority> localAuthorities = new ArrayList<GrantedAuthority>();
 						localAuthorities.add(AUTHENTICATED_AUTHORITY);
