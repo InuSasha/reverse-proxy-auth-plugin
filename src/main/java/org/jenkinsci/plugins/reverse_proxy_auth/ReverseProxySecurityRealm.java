@@ -257,7 +257,7 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 	 */
 	public final List<String> allowedProxyAddresses;
 
-	public final boolean disableLdapEmailResolver;
+    public final boolean disableLdapEmailResolver;
 
     private final String displayNameLdapAttribute;
 
@@ -277,7 +277,11 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 		}
 		
 		this.allowedProxyAddresses = new ArrayList<String>();
-		this.allowedProxyAddresses.add(allowedProxyAddresses);
+		for(String addr: allowedProxyAddresses.split(' ')) {
+			if(addr.trim().isEmpty())
+				continue;
+			this.allowedProxyAddresses.add(normalizAddr(addr));
+		}
 		
 		this.server = fixEmptyAndTrim(server);
 		this.managerDN = fixEmpty(managerDN);
@@ -355,15 +359,40 @@ public class ReverseProxySecurityRealm extends SecurityRealm {
 		return emailAddressLdapAttribute;
 	}
 	
+	/* bring the given ip address into full written form, importend for ipv6 */
+	private String normalizeAddr(String addr) {
+		return addr;
+	}
+	
 	private String getProxyHeader(HttpServletRequest r, String headerName) {
+		String headerValue = r.getHeader(headerName);
 		String remoteAddr = r.getRemoteAddr();
-		if(!allowedProxyAddresses.contains(remoteAddr)) {
-			LOGGER.warning("Get auth header from forbidden host (" + remoteAddr + "). Ignore them");
+
+		if(allowedProxyAddresses.isEmpty())
+			return headerValue;
+		
+		if(!headerValue) {
+			LOGGER.warning("No auth header send from host: " + remoteAddr);
 			return null;
 		}
-		LOGGER.info("Get auth header from allowed host: " + remoteAddr);
-		return r.getHeader(headerName);
+		
+		if(allowedProxyAddresses.contains(remoteAddr)) {
+			LOGGER.fine("Get auth header from allowed host: " + remoteAddr);
+			return headerValue;
+		}
+		
+		String normalizedAddr = normalizeAddr(remoteAddr);
+		if(allowedProxyAddresses.contains(normalizedAddr)) {
+			/* store original remote addr, to speed futher checks */
+			allowedProxyAddresses.add(0, remoteAddr);
+			LOGGER.fine("Get auth header from allowed host: " + remoteAddr);
+			return headerValue;
+		}
+		
+		LOGGER.warning("Get auth header from forbidden host (" + remoteAddr + "). Ignore them");
+		return null;
 	}
+	
 	/**
 	 * Infer the root DN.
 	 *
