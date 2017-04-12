@@ -33,7 +33,7 @@ THE SOFTWARE.
     <f:textbox field="headerGroupsDelimiter" default="|" />
   </f:entry>
   <f:entry title="${%Allowed Proxy Addresses}">
-    <f:textbox field="allowedProxyAddresses" default="127.0.0.1" />
+    <f:textbox field="allowedProxyAddresses" default="" />
   </f:entry>
   <f:advanced>  
 	<f:entry title="${%Server}" >
